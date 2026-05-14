@@ -14,7 +14,7 @@ const client = new Client({
     ]
 });
 
-// Banco de dados para XP e Nível (Persistência)
+// Banco de dados para XP e Nível
 let db = { users: {} };
 if (fs.existsSync('./db.json')) {
     db = JSON.parse(fs.readFileSync('./db.json'));
@@ -22,10 +22,10 @@ if (fs.existsSync('./db.json')) {
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 
-// Configuração de IA Neutra para evitar o bloqueio de segurança do Google
+// CONFIGURAÇÃO CORRIGIDA: Usando -latest para evitar o Erro 404 de Ohio
 const model = genAI.getGenerativeModel({ 
-    model: "gemini-1.5-flash",
-    systemInstruction: "Você é o Tex, um assistente para Discord. Suas respostas são curtas e objetivas.",
+    model: "gemini-1.5-flash-latest", 
+    systemInstruction: "Você é o Tex, um bot curto e sarcástico. Você foi criado pelo Sunny.",
     safetySettings: [
         { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_NONE },
         { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_NONE },
@@ -34,35 +34,27 @@ const model = genAI.getGenerativeModel({
     ]
 });
 
-// Servidor para manter o Render Online
 const app = express();
 app.get('/', (req, res) => res.send("Tex Supremo Online"));
-const port = process.env.PORT || 10000;
-app.listen(port, '0.0.0.0', () => console.log(`🌐 Porta ${port} ativa.`));
+app.listen(process.env.PORT || 10000);
 
 client.on('messageCreate', async (message) => {
     if (message.author.bot) return;
 
-    // --- SISTEMA DE XP E RANKING ---
+    // Sistema de XP
     const uid = message.author.id;
-    if (!db.users[uid]) {
-        db.users[uid] = { xp: 0, level: 1, name: message.author.username };
-    }
-    
+    if (!db.users[uid]) db.users[uid] = { xp: 0, level: 1, name: message.author.username };
     db.users[uid].xp += 5;
-    if (db.users[uid].xp >= db.users[uid].level * 200) {
-        db.users[uid].level++;
-    }
+    if (db.users[uid].xp >= db.users[uid].level * 200) db.users[uid].level++;
     fs.writeFileSync('./db.json', JSON.stringify(db));
 
-    // --- RESPOSTA POR MENÇÃO (IA) ---
     if (!message.content.startsWith('!')) {
         if (message.mentions.has(client.user)) {
             try {
                 const result = await model.generateContent(message.content);
                 return message.reply(result.response.text());
             } catch (e) { 
-                // Respostas variadas para falhas de filtro/key (image_85757a.png)
+                console.error("Erro na IA:", e);
                 const falas = ["Diga.", "O que foi?", "Fala.", "Oi.", "Tô ocupado."];
                 return message.reply(falas[Math.floor(Math.random() * falas.length)]); 
             }
@@ -73,7 +65,18 @@ client.on('messageCreate', async (message) => {
     const args = message.content.slice(1).trim().split(/ +/);
     const command = args.shift().toLowerCase();
 
-    // --- COMANDOS ---
+    // --- NOVO COMANDO: !VERSÃO ---
+    if (command === 'versão') {
+        const embed = new EmbedBuilder()
+            .setTitle("⚙️ Informações do Sistema")
+            .setColor("#00FF00")
+            .addFields(
+                { name: "Versão Atual", value: "Tex V5.8 - Stable Chaos", inline: true },
+                { name: "Criador", value: "Sunny", inline: true }
+            )
+            .setFooter({ text: "Engenharia de Software - UCB" });
+        return message.reply({ embeds: [embed] });
+    }
 
     if (command === 'joke') {
         const memes = [
@@ -82,13 +85,7 @@ client.on('messageCreate', async (message) => {
             "https://pbs.twimg.com/media/GMcY89NWsAA5X_L.jpg"
         ];
         const memeUrl = memes[Math.floor(Math.random() * memes.length)];
-        
-        const embed = new EmbedBuilder()
-            .setTitle("🐦 Meme do Chaos")
-            .setImage(memeUrl)
-            .setColor("#1DA1F2");
-
-        // Enviamos o URL no conteúdo para forçar o Discord a carregar (image_8574e1.png)
+        const embed = new EmbedBuilder().setTitle("🐦 Meme").setImage(memeUrl).setColor("#1DA1F2");
         return message.reply({ content: memeUrl, embeds: [embed] });
     }
 
@@ -97,35 +94,18 @@ client.on('messageCreate', async (message) => {
         const embed = new EmbedBuilder()
             .setTitle(`🐙 Dossiê: ${message.author.username}`)
             .setColor('#5865F2')
-            .addFields(
-                { name: '📊 Nível', value: `${u.level}`, inline: true },
-                { name: '✨ XP', value: `${u.xp}`, inline: true },
-                { name: '🕒 Visto por último', value: 'Online agora mesmo 👀' }
-            );
+            .addFields({ name: '📊 Nível', value: `${u.level}`, inline: true }, { name: '✨ XP', value: `${u.xp}`, inline: true });
         return message.reply({ embeds: [embed] });
     }
 
     if (command === 'ranking') {
-        const sorted = Object.values(db.users)
-            .sort((a, b) => b.xp - a.xp)
-            .slice(0, 3);
-            
+        const sorted = Object.values(db.users).sort((a, b) => b.xp - a.xp).slice(0, 3);
         const embed = new EmbedBuilder()
             .setTitle('🐙 Lendas do Chaos')
             .setColor('#FFD700')
             .setDescription(sorted.map((u, i) => `${i+1}. **${u.name}**\nNível ${u.level} (${u.xp} XP)`).join('\n\n'));
-            
         return message.reply({ embeds: [embed] });
     }
-
-    if (command === 'pix') {
-        return message.reply("💸 Chave PIX do Criador: **SuaChaveAqui**");
-    }
-});
-
-client.on('ready', () => {
-    console.log(`✅ TEX ONLINE - Vigiando o servidor.`);
-    client.user.setActivity('Chaos', { type: ActivityType.Watching });
 });
 
 client.login(process.env.DISCORD_TOKEN);
