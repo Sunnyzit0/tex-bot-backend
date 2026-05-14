@@ -44,7 +44,7 @@ function saveDb() {
 // ──────────────────────────────────────────
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 const model = genAI.getGenerativeModel({
-    model: "gemini-1.5-flash",
+    model: "gemini-1.5-flash-001",
     systemInstruction: "Você é o Tex, um bot sarcástico e bem-humorado. Criado por Sunny. Responda sempre em português.",
     safetySettings: [
         { category: HarmCategory.HARM_CATEGORY_HARASSMENT,  threshold: HarmBlockThreshold.BLOCK_NONE },
@@ -144,21 +144,23 @@ client.on('messageCreate', async (message) => {
             .setTitle("⚙️ Status do Sistema")
             .setColor("#00FF00")
             .addFields(
-                { name: "Versão",  value: "Tex V6.1", inline: true },
+                { name: "Versão",  value: "Tex V6.2", inline: true },
                 { name: "Criador", value: "Sunny",    inline: true },
-                { name: "Model",   value: "Gemini 1.5 Flash", inline: true }
+                { name: "Model",   value: "Gemini 1.5 Flash 001", inline: true }
             );
         return message.reply({ embeds: [embed] });
     }
 
-    // !joke
+    // !joke — memes BR
     if (command === 'joke') {
+        const subreddits = ['eu_nvr', 'brasil', 'desabafos', 'hue'];
+        const sub = subreddits[Math.floor(Math.random() * subreddits.length)];
         try {
-            const res  = await fetch('https://meme-api.com/gimme');
+            const res  = await fetch(`https://meme-api.com/gimme/${sub}`);
             const data = await res.json();
-            if (data?.url) return message.reply({ content: data.url });
+            if (data?.url && !data.nsfw) return message.reply({ content: `${data.title}\n${data.url}` });
         } catch (_) {}
-        // fallback caso a API esteja fora
+        // fallback
         const fallback = [
             "https://i.imgur.com/8m5uNfX.jpeg",
             "https://i.imgur.com/k6wR6Gk.jpeg"
