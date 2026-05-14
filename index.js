@@ -8,15 +8,15 @@ const client = new Client({
     intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent, GatewayIntentBits.GuildMembers, GatewayIntentBits.GuildPresences]
 });
 
-// Banco de dados simples para XP
+// Banco de dados para XP
 let db = { users: {} };
 if (fs.existsSync('./db.json')) db = JSON.parse(fs.readFileSync('./db.json'));
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 const model = genAI.getGenerativeModel({ 
     model: "gemini-1.5-flash",
-    systemInstruction: "Você é o Tex, um bot caótico e sarcástico criado pelo Arthur. Você odeia quase todo mundo, menos ele. Suas piadas são ácidas e você não tem papas na língua. Use gírias e deboche.",
-    // AFROUXANDO OS FILTROS PARA A IA RESPONDER TUDO
+    // Removido nome e profissão. Agora ele só sabe do "Criador".
+    systemInstruction: "Você é o Tex, um bot caótico e sarcástico. Você foi desenvolvido pelo seu Criador. Suas respostas são curtas, ácidas e cheias de deboche. Não seja educado.",
     safetySettings: [
         { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_NONE },
         { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_NONE },
@@ -26,20 +26,17 @@ const model = genAI.getGenerativeModel({
 });
 
 const app = express();
-app.get('/', (req, res) => res.send("Tex Chaos V5 Online"));
+app.get('/', (req, res) => res.send("Tex Chaos Online"));
 app.listen(process.env.PORT || 10000);
 
 client.on('messageCreate', async (message) => {
     if (message.author.bot) return;
 
-    // SISTEMA DE XP
+    // Sistema de XP (Mantido para o ranking funcionar como na imagem)
     const uid = message.author.id;
     if (!db.users[uid]) db.users[uid] = { xp: 0, level: 1, name: message.author.username };
-    db.users[uid].xp += Math.floor(Math.random() * 10) + 5;
-    if (db.users[uid].xp >= db.users[uid].level * 200) {
-        db.users[uid].level++;
-        message.reply(`🆙 Porra, ${message.author.username} subiu pro nível ${db.users[uid].level}! Tá ficando menos inútil.`);
-    }
+    db.users[uid].xp += 5;
+    if (db.users[uid].xp >= db.users[uid].level * 200) db.users[uid].level++;
     fs.writeFileSync('./db.json', JSON.stringify(db));
 
     if (!message.content.startsWith('!')) {
@@ -47,13 +44,27 @@ client.on('messageCreate', async (message) => {
             try {
                 const result = await model.generateContent(message.content);
                 return message.reply(result.response.text());
-            } catch (e) { return message.reply("O filtro me barrou. Arthur, me solta!"); }
+            } catch (e) { 
+                return message.reply("O filtro do Google me travou. Talvez a Key esteja batendo no limite."); 
+            }
         }
         return;
     }
 
     const args = message.content.slice(1).trim().split(/ +/);
     const command = args.shift().toLowerCase();
+
+    // --- COMANDOS ATUALIZADOS ---
+
+    if (command === 'joke') {
+        // Agora manda apenas links de imagens/memes
+        const memes = [
+            "https://pbs.twimg.com/media/GMcY89NWsAA5X_L.jpg",
+            "https://pbs.twimg.com/media/F_9z-3XW4AA8G_y.jpg",
+            "https://pbs.twimg.com/media/F85s-3XW4AA8G_y.jpg"
+        ];
+        return message.reply(memes[Math.floor(Math.random() * memes.length)]);
+    }
 
     if (command === 'perfil') {
         const u = db.users[uid];
@@ -77,13 +88,8 @@ client.on('messageCreate', async (message) => {
         return message.reply({ embeds: [embed] });
     }
 
-    if (command === 'joke') {
-        // Link de exemplo de memes do Twitter (você pode colocar links reais de imagens/memes aqui)
-        const memes = [
-            "https://pbs.twimg.com/media/F6p9f-XWwAA9r9A.jpg",
-            "https://pbs.twimg.com/media/F7X8A_WXwAA7q7B.jpg"
-        ];
-        return message.reply(memes[Math.floor(Math.random() * memes.length)]);
+    if (command === 'pix') {
+        return message.reply("💸 Manda o PIX pro Criador aí. Chave: **SuaChaveAqui**");
     }
 });
 
