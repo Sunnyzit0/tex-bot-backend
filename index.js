@@ -6,21 +6,22 @@ const fs = require('fs');
 const express = require('express');
 const cors = require('cors');
 
+// DEBUG DE AMBIENTE
 console.log("=========================================");
-console.log("🚀 DEBUG DE CONEXÃO - TEX V2.4");
-console.log("DISCORD_TOKEN PRESENTE:", !!process.env.DISCORD_TOKEN);
+console.log("🚀 DIAGNÓSTICO FINAL - TEX V2.5");
+console.log("TOKEN PRESENTE:", !!process.env.DISCORD_TOKEN);
 console.log("=========================================");
 
+// Intents mínimas para evitar erros de permissão
 const client = new Client({
     intents: [
         GatewayIntentBits.Guilds, 
         GatewayIntentBits.GuildMessages,
-        GatewayIntentBits.MessageContent, 
-        GatewayIntentBits.GuildMembers
+        GatewayIntentBits.MessageContent
     ]
 });
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "key_nula");
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "key_vazia");
 const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
 const dbPath = './atividade.json';
@@ -33,31 +34,23 @@ app.get('/api/stats', (req, res) => res.json(db));
 
 client.on('ready', () => {
     console.log(`🐙 Tex Supremo Online! Logado como: ${client.user.tag}`);
-    client.user.setActivity('Observando o Chaos', { type: ActivityType.Watching });
+    client.user.setActivity('Chaos', { type: ActivityType.Watching });
 });
 
-client.on('error', (err) => console.error("❌ ERRO NO CLIENTE:", err));
+client.on('error', (err) => console.error("❌ ERRO NO CLIENTE:", err.message));
 
+// Servidor Express (Obrigatório para o Render não dar Timeout)
 const port = process.env.PORT || 10000;
 app.listen(port, '0.0.0.0', () => {
     console.log(`🌐 API ONLINE NA PORTA ${port}`);
     
     if (process.env.DISCORD_TOKEN) {
-        console.log("⏳ Enviando comando de login...");
-        
-        // Timer de segurança: Se em 15s não logar, avisa no log
-        const timeout = setTimeout(() => {
-            console.error("⚠️ O Discord está demorando demais para responder. Verifique as INTENTS no Portal!");
-        }, 15000);
-
+        console.log("⏳ Tentando login simplificado...");
         client.login(process.env.DISCORD_TOKEN)
-            .then(() => {
-                clearTimeout(timeout);
-                console.log("✅ Conexão estabelecida!");
-            })
+            .then(() => console.log("✅ Conexão estabelecida com sucesso!"))
             .catch(err => {
-                clearTimeout(timeout);
-                console.error("❌ FALHA NO LOGIN:", err.message);
+                console.error("❌ FALHA NO LOGIN:");
+                console.error("ERRO:", err.message);
             });
     }
 });
