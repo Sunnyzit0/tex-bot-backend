@@ -40,12 +40,11 @@ function saveDb() {
 
 // ──────────────────────────────────────────
 //  GEMINI
-//  FIX: "gemini-1.5-flash-latest" foi descontinuado
-//  Use "gemini-1.5-flash" ou "gemini-2.0-flash"
+//  Usando 1.5-flash — cota free separada do 2.0
 // ──────────────────────────────────────────
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 const model = genAI.getGenerativeModel({
-    model: "gemini-2.0-flash",          // ← corrigido aqui
+    model: "gemini-1.5-flash",
     systemInstruction: "Você é o Tex, um bot sarcástico e bem-humorado. Criado por Sunny. Responda sempre em português.",
     safetySettings: [
         { category: HarmCategory.HARM_CATEGORY_HARASSMENT,  threshold: HarmBlockThreshold.BLOCK_NONE },
@@ -55,6 +54,9 @@ const model = genAI.getGenerativeModel({
 
 // Histórico de conversa por usuário (em memória)
 const chatSessions = {};
+
+// Cooldown: evita spam e estouro de cota (10s por usuário)
+const cooldowns = new Set();
 
 async function responderGemini(uid, texto) {
     if (!chatSessions[uid]) {
@@ -110,6 +112,14 @@ client.on('messageCreate', async (message) => {
     // ── MENÇÃO → Gemini ──
     if (!message.content.startsWith('!')) {
         if (message.mentions.has(client.user)) {
+
+            // Cooldown — evita spam e estouro de cota
+            if (cooldowns.has(uid)) {
+                return message.reply("Calma aí, me dá 10 segundos.");
+            }
+            cooldowns.add(uid);
+            setTimeout(() => cooldowns.delete(uid), 10000);
+
             await message.channel.sendTyping();
             try {
                 const resposta = await responderGemini(uid, message.content);
@@ -134,9 +144,9 @@ client.on('messageCreate', async (message) => {
             .setTitle("⚙️ Status do Sistema")
             .setColor("#00FF00")
             .addFields(
-                { name: "Versão",  value: "Tex V6.0", inline: true },
+                { name: "Versão",  value: "Tex V6.1", inline: true },
                 { name: "Criador", value: "Sunny",    inline: true },
-                { name: "Model",   value: "Gemini 2.0 Flash", inline: true }
+                { name: "Model",   value: "Gemini 1.5 Flash", inline: true }
             );
         return message.reply({ embeds: [embed] });
     }
