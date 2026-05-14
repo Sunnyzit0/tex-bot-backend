@@ -1,4 +1,5 @@
-require('dotenv').config();
+require('dotenv').config(); 
+
 const { Client, GatewayIntentBits, AttachmentBuilder, EmbedBuilder, ActivityType } = require('discord.js');
 const { joinVoiceChannel, createAudioPlayer, createAudioResource, AudioPlayerStatus } = require('@discordjs/voice');
 const { GoogleGenerativeAI } = require("@google/generative-ai");
@@ -11,7 +12,21 @@ const axios = require('axios');
 const express = require('express');
 const cors = require('cors');
 
-// 1. Configuração do Cliente Discord com as Intents necessárias
+// =========================================
+// 🚀 BLOCO DE DEBUG (TESTE DE AMBIENTE)
+// =========================================
+console.log("=========================================");
+console.log("🚀 INICIANDO TESTE DE AMBIENTE - TEX V2.1");
+console.log("TOKEN CONFIGURADO NO RENDER:", !!process.env.DISCORD_TOKEN);
+console.log("GEMINI KEY CONFIGURADA:", !!process.env.GEMINI_API_KEY);
+console.log("PORTA DO RENDER:", process.env.PORT || 3000);
+console.log("=========================================");
+
+// Verificação de segurança nos logs do Render
+if (!process.env.DISCORD_TOKEN) {
+    console.error("❌ ERRO CRÍTICO: A variável DISCORD_TOKEN não foi detectada pelo sistema!");
+}
+
 const client = new Client({
     intents: [
         GatewayIntentBits.Guilds, 
@@ -23,21 +38,17 @@ const client = new Client({
     ]
 });
 
-// 2. Configuração Gemini
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "dummy_key");
 const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
-// 3. Banco de dados simples (JSON)
 const dbPath = './atividade.json';
 let db = fs.existsSync(dbPath) ? JSON.parse(fs.readFileSync(dbPath)) : {};
 const salvarDB = () => fs.writeFileSync(dbPath, JSON.stringify(db, null, 4));
 
-// 4. Configuração Express (API para o Dashboard)
 const app = express();
 app.use(cors());
 app.get('/api/stats', (req, res) => res.json(db));
 
-// 5. Funções de áudio
 async function tocarPix(message) {
     if (!message.member.voice.channel) return;
     try {
@@ -54,7 +65,6 @@ async function tocarPix(message) {
     } catch (e) { console.error("Erro no áudio:", e); }
 }
 
-// 6. Eventos do Bot
 client.on('ready', () => {
     console.log(`🐙 Tex Supremo Online!`);
     client.user.setActivity('Observando o Chaos', { type: ActivityType.Watching });
@@ -116,16 +126,20 @@ client.on('messageCreate', async (message) => {
 
 // --- INICIALIZAÇÃO PARALELA (Solução para o Render) ---
 
-// Primeiro, sobe a API para o Render não dar Timeout
+// 1. Porta do Render (Prioridade Máxima)
 const port = process.env.PORT || 3000;
 app.listen(port, '0.0.0.0', () => {
     console.log(`🌐 API rodando na porta ${port}`);
 });
 
-// Depois, tenta o login no Discord sem travar a API
-client.login(process.env.DISCORD_TOKEN)
-    .then(() => console.log("✅ Comando de login enviado ao Discord!"))
-    .catch(err => {
-        console.error("❌ ERRO NO LOGIN:");
-        console.error(err);
-    });
+// 2. Login do Discord
+if (process.env.DISCORD_TOKEN) {
+    client.login(process.env.DISCORD_TOKEN)
+        .then(() => console.log("✅ Comando de login enviado ao Discord!"))
+        .catch(err => {
+            console.error("❌ ERRO NO LOGIN DO DISCORD:");
+            console.error(err.message);
+        });
+} else {
+    console.error("⚠️ Pulando login do Discord: Token não configurado.");
+}
