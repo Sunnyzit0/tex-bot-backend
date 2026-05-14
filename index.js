@@ -6,10 +6,8 @@ const fs = require('fs');
 const express = require('express');
 const cors = require('cors');
 
-// DEBUG DE INICIALIZAÇÃO
 console.log("=========================================");
-console.log("🚀 DEBUG DE CONEXÃO - TEX V2.3");
-console.log("HORA DO SISTEMA:", new Date().toISOString());
+console.log("🚀 DEBUG DE CONEXÃO - TEX V2.4");
 console.log("DISCORD_TOKEN PRESENTE:", !!process.env.DISCORD_TOKEN);
 console.log("=========================================");
 
@@ -38,24 +36,28 @@ client.on('ready', () => {
     client.user.setActivity('Observando o Chaos', { type: ActivityType.Watching });
 });
 
-// CAPTURA DE ERROS TÉCNICOS
-client.on('error', (err) => console.error("❌ ERRO NO CLIENTE DISCORD:", err));
-process.on('unhandledRejection', error => console.error('❌ ERRO NÃO TRATADO:', error));
+client.on('error', (err) => console.error("❌ ERRO NO CLIENTE:", err));
 
 const port = process.env.PORT || 10000;
 app.listen(port, '0.0.0.0', () => {
     console.log(`🌐 API ONLINE NA PORTA ${port}`);
     
     if (process.env.DISCORD_TOKEN) {
-        console.log("⏳ Iniciando tentativa de login no Discord...");
+        console.log("⏳ Enviando comando de login...");
+        
+        // Timer de segurança: Se em 15s não logar, avisa no log
+        const timeout = setTimeout(() => {
+            console.error("⚠️ O Discord está demorando demais para responder. Verifique as INTENTS no Portal!");
+        }, 15000);
+
         client.login(process.env.DISCORD_TOKEN)
-            .then(() => console.log("✅ Token aceito! Aguardando evento 'ready'..."))
+            .then(() => {
+                clearTimeout(timeout);
+                console.log("✅ Conexão estabelecida!");
+            })
             .catch(err => {
-                console.error("❌ FALHA CRÍTICA NO LOGIN:");
-                console.error("MENSAGEM:", err.message);
-                console.error("CÓDIGO:", err.code);
+                clearTimeout(timeout);
+                console.error("❌ FALHA NO LOGIN:", err.message);
             });
-    } else {
-        console.error("⚠️ ERRO: DISCORD_TOKEN vazio no ambiente.");
     }
 });
