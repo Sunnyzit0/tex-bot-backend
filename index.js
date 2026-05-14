@@ -11,32 +11,33 @@ const axios = require('axios');
 const express = require('express');
 const cors = require('cors');
 
+// Configuração do Cliente Discord
 const client = new Client({
     intents: [
-        GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages,
-        GatewayIntentBits.MessageContent, GatewayIntentBits.GuildMembers,
-        GatewayIntentBits.GuildVoiceStates, GatewayIntentBits.GuildMessageReactions
+        GatewayIntentBits.Guilds, 
+        GatewayIntentBits.GuildMessages,
+        GatewayIntentBits.MessageContent, 
+        GatewayIntentBits.GuildMembers,
+        GatewayIntentBits.GuildVoiceStates, 
+        GatewayIntentBits.GuildMessageReactions
     ]
 });
 
+// Configuração Gemini
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
+// Banco de dados simples (JSON)
 const dbPath = './atividade.json';
 let db = fs.existsSync(dbPath) ? JSON.parse(fs.readFileSync(dbPath)) : {};
 const salvarDB = () => fs.writeFileSync(dbPath, JSON.stringify(db, null, 4));
 
+// Configuração Express (API para o Dashboard)
 const app = express();
 app.use(cors());
 app.get('/api/stats', (req, res) => res.json(db));
 
-// --- AJUSTE PARA HOSPEDAGEM ---
-// O Render ou qualquer nuvem vai definir a porta automaticamente.
-const port = process.env.PORT || 3000;
-app.listen(port, '0.0.0.0', () => console.log(`🌐 API rodando na porta ${port}`));
-
-// ... (Restante do código de áudio e comandos permanece igual)
-
+// Funções de áudio
 async function tocarPix(message) {
     if (!message.member.voice.channel) return;
     try {
@@ -53,6 +54,7 @@ async function tocarPix(message) {
     } catch (e) { console.error("Erro no áudio:", e); }
 }
 
+// Eventos do Bot
 client.on('ready', () => {
     console.log(`🐙 Tex Supremo Online!`);
     client.user.setActivity('Observando o Chaos', { type: ActivityType.Watching });
@@ -112,4 +114,12 @@ client.on('messageCreate', async (message) => {
     }
 });
 
-client.login(process.env.DISCORD_TOKEN);
+// Inicialização: Primeiro o Discord, depois a API
+client.login(process.env.DISCORD_TOKEN).then(() => {
+    const port = process.env.PORT || 3000;
+    app.listen(port, '0.0.0.0', () => {
+        console.log(`🌐 API rodando na porta ${port}`);
+    });
+}).catch(err => {
+    console.error("❌ Erro fatal ao logar no Discord:", err);
+});
