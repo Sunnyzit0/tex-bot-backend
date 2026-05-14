@@ -39,7 +39,7 @@ client.on('ready', () => {
 
 client.on('error', (err) => console.error("❌ ERRO NO CLIENTE:", err.message));
 
-// Servidor Express (Obrigatório para o Render não dar Timeout)
+// Servidor Express (Obrigatório para o Render)
 const port = process.env.PORT || 10000;
 app.listen(port, '0.0.0.0', () => {
     console.log(`🌐 API ONLINE NA PORTA ${port}`);
