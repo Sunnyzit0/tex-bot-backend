@@ -8,15 +8,14 @@ const client = new Client({
     intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent, GatewayIntentBits.GuildMembers, GatewayIntentBits.GuildPresences]
 });
 
-// Banco de dados para XP
+// Banco de dados para XP (Ranking da image_86b7cd.png)
 let db = { users: {} };
 if (fs.existsSync('./db.json')) db = JSON.parse(fs.readFileSync('./db.json'));
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 const model = genAI.getGenerativeModel({ 
     model: "gemini-1.5-flash",
-    // Removido nome e profissão. Agora ele só sabe do "Criador".
-    systemInstruction: "Você é o Tex, um bot caótico e sarcástico. Você foi desenvolvido pelo seu Criador. Suas respostas são curtas, ácidas e cheias de deboche. Não seja educado.",
+    systemInstruction: "Você é o Tex, um bot caótico e sarcástico. Você foi desenvolvido pelo seu Criador. Suas respostas são curtas, ácidas e cheias de deboche. Não seja educado e não use nomes próprios.",
     safetySettings: [
         { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_NONE },
         { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_NONE },
@@ -26,13 +25,13 @@ const model = genAI.getGenerativeModel({
 });
 
 const app = express();
-app.get('/', (req, res) => res.send("Tex Chaos Online"));
+app.get('/', (req, res) => res.send("Tex Online"));
 app.listen(process.env.PORT || 10000);
 
 client.on('messageCreate', async (message) => {
     if (message.author.bot) return;
 
-    // Sistema de XP (Mantido para o ranking funcionar como na imagem)
+    // Sistema de XP para o Ranking
     const uid = message.author.id;
     if (!db.users[uid]) db.users[uid] = { xp: 0, level: 1, name: message.author.username };
     db.users[uid].xp += 5;
@@ -45,7 +44,7 @@ client.on('messageCreate', async (message) => {
                 const result = await model.generateContent(message.content);
                 return message.reply(result.response.text());
             } catch (e) { 
-                return message.reply("O filtro do Google me travou. Talvez a Key esteja batendo no limite."); 
+                return message.reply("Censurado pelo Google. O sistema de segurança deles barrou a resposta."); 
             }
         }
         return;
@@ -54,10 +53,7 @@ client.on('messageCreate', async (message) => {
     const args = message.content.slice(1).trim().split(/ +/);
     const command = args.shift().toLowerCase();
 
-    // --- COMANDOS ATUALIZADOS ---
-
     if (command === 'joke') {
-        // Agora manda apenas links de imagens/memes
         const memes = [
             "https://pbs.twimg.com/media/GMcY89NWsAA5X_L.jpg",
             "https://pbs.twimg.com/media/F_9z-3XW4AA8G_y.jpg",
@@ -86,10 +82,6 @@ client.on('messageCreate', async (message) => {
             .setColor('#FFD700')
             .setDescription(sorted.map((u, i) => `${i+1}. **${u.name}**\nNível ${u.level} (${u.xp} XP)`).join('\n\n'));
         return message.reply({ embeds: [embed] });
-    }
-
-    if (command === 'pix') {
-        return message.reply("💸 Manda o PIX pro Criador aí. Chave: **SuaChaveAqui**");
     }
 });
 
