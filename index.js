@@ -8,14 +8,14 @@ const client = new Client({
     intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent, GatewayIntentBits.GuildMembers, GatewayIntentBits.GuildPresences]
 });
 
-// Banco de dados para XP (Ranking da image_86b7cd.png)
 let db = { users: {} };
 if (fs.existsSync('./db.json')) db = JSON.parse(fs.readFileSync('./db.json'));
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 const model = genAI.getGenerativeModel({ 
     model: "gemini-1.5-flash",
-    systemInstruction: "Você é o Tex, um bot caótico e sarcástico. Você foi desenvolvido pelo seu Criador. Suas respostas são curtas, ácidas e cheias de deboche. Não seja educado e não use nomes próprios.",
+    // Instrução suavizada para o Google não barrar a IA antes dela falar
+    systemInstruction: "Você é o Tex, um assistente de humor ácido e sarcástico. Responda de forma curta, debochada e direta. Não use nomes e evite termos proibidos.",
     safetySettings: [
         { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_NONE },
         { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_NONE },
@@ -31,7 +31,6 @@ app.listen(process.env.PORT || 10000);
 client.on('messageCreate', async (message) => {
     if (message.author.bot) return;
 
-    // Sistema de XP para o Ranking
     const uid = message.author.id;
     if (!db.users[uid]) db.users[uid] = { xp: 0, level: 1, name: message.author.username };
     db.users[uid].xp += 5;
@@ -44,7 +43,7 @@ client.on('messageCreate', async (message) => {
                 const result = await model.generateContent(message.content);
                 return message.reply(result.response.text());
             } catch (e) { 
-                return message.reply("Censurado pelo Google. O sistema de segurança deles barrou a resposta."); 
+                return message.reply("Sem paciência agora. Pergunta outra coisa."); 
             }
         }
         return;
@@ -53,13 +52,21 @@ client.on('messageCreate', async (message) => {
     const args = message.content.slice(1).trim().split(/ +/);
     const command = args.shift().toLowerCase();
 
+    // COMANDO !JOKE CORRIGIDO (COM EMBED PARA MOSTRAR A IMAGEM)
     if (command === 'joke') {
         const memes = [
-            "https://pbs.twimg.com/media/GMcY89NWsAA5X_L.jpg",
             "https://pbs.twimg.com/media/F_9z-3XW4AA8G_y.jpg",
-            "https://pbs.twimg.com/media/F85s-3XW4AA8G_y.jpg"
+            "https://pbs.twimg.com/media/F85s-3XW4AA8G_y.jpg",
+            "https://pbs.twimg.com/media/GMcY89NWsAA5X_L.jpg"
         ];
-        return message.reply(memes[Math.floor(Math.random() * memes.length)]);
+        const memeUrl = memes[Math.floor(Math.random() * memes.length)];
+        
+        const embed = new EmbedBuilder()
+            .setTitle("🐦 Meme do Twitter")
+            .setImage(memeUrl)
+            .setColor("#1DA1F2");
+
+        return message.reply({ embeds: [embed] });
     }
 
     if (command === 'perfil') {
